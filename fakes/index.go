@@ -9,14 +9,17 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/imgutil"
+	h "github.com/buildpacks/imgutil/testhelpers"
 )
 
 func NewIndex(format types.MediaType, byteSize, layers, count int64, desc v1.Descriptor, ops ...Option) (*Index, error) {
@@ -39,6 +42,7 @@ func NewIndex(format types.MediaType, byteSize, layers, count int64, desc v1.Des
 		mfest = &v1.IndexManifest{}
 	}
 
+	var platformIdx = len(mfest.Manifests)
 	for _, m := range mfest.Manifests {
 		img, err := idx.Image(m.Digest)
 		if err != nil {
@@ -52,8 +56,24 @@ func NewIndex(format types.MediaType, byteSize, layers, count int64, desc v1.Des
 			return nil, err
 		}
 
+		fakePlatform := v1.Platform{}
+		platformInt := 0
+		for _, value := range AllPlatforms {
+			if platformIdx == platformInt {
+				fakePlatform = v1.Platform{
+					OS:           value.OS,
+					Architecture: value.Arch,
+					Variant:      value.Variant,
+				}
+			}
+			platformInt++
+		}
 		if config == nil {
-			config = &v1.ConfigFile{}
+			config = &v1.ConfigFile{
+				OS:           fakePlatform.OS,
+				Architecture: fakePlatform.Architecture,
+				Variant:      fakePlatform.Variant,
+			}
 		}
 
 		imgMfest, err := img.Manifest()
@@ -62,11 +82,17 @@ func NewIndex(format types.MediaType, byteSize, layers, count int64, desc v1.Des
 		}
 
 		if imgMfest == nil {
-			imgMfest = &v1.Manifest{}
+			imgMfest = &v1.Manifest{
+				Config: v1.Descriptor{
+					Platform: &v1.Platform{OS: fakePlatform.OS, Architecture: fakePlatform.Architecture, Variant: fakePlatform.Variant},
+				},
+				Subject: &v1.Descriptor{
+					Platform: &v1.Platform{OS: fakePlatform.OS, Architecture: fakePlatform.Architecture, Variant: fakePlatform.Variant},
+				},
+			}
 		}
 
 		platform := imgMfest.Config.Platform
-
 		if platform == nil && imgMfest.Subject != nil && imgMfest.Subject.Platform != nil {
 			platform = imgMfest.Subject.Platform
 		}
@@ -89,20 +115,30 @@ func NewIndex(format types.MediaType, byteSize, layers, count int64, desc v1.Des
 		}
 	}
 
+	options := getOptions(ops)
+
+	if options.name == "" {
+		options.name = "index-test" + h.RandString(10)
+	}
+
 	return &Index{
-		ImageIndex: idx,
-		format:     format,
-		byteSize:   byteSize,
-		layers:     layers,
-		count:      count,
-		ops:        ops,
-		Annotate:   annotate,
-		images:     images,
+		platformInt: uint(platformIdx),
+		name:        options.name,
+		Host:        options.host,
+		Port:        options.port,
+		ImageIndex:  idx,
+		format:      format,
+		byteSize:    byteSize,
+		layers:      layers,
+		count:       count,
+		ops:         ops,
+		Annotate:    annotate,
+		images:      images,
 	}, nil
 }
 
 func computeIndex(idx *Index) error {
-	mfest, err := idx.IndexManifest()
+	mfest, err := idx.ImageIndex.IndexManifest()
 	if err != nil {
 		return err
 	}
@@ -144,7 +180,17 @@ func computeIndex(idx *Index) error {
 		}
 
 		if platform == nil {
-			platform = &v1.Platform{}
+			var platformInt uint = 0
+			for _, value := range AllPlatforms {
+				if platformInt == idx.platformInt {
+					platform = &v1.Platform{
+						OS:           value.OS,
+						Architecture: value.Arch,
+					}
+					break
+				}
+				platformInt++
+			}
 		}
 
 		idx.Annotate[m.Digest] = v1.Descriptor{
@@ -166,6 +212,8 @@ func computeIndex(idx *Index) error {
 var _ imgutil.ImageIndex = (*Index)(nil)
 
 type Index struct {
+	platformInt                     uint
+	name, Host, Port                string
 	Annotate                        map[v1.Hash]v1.Descriptor
 	format                          types.MediaType
 	byteSize, layers, count         int64
@@ -173,6 +221,10 @@ type Index struct {
 	isDeleted, shouldSave, AddIndex bool
 	images                          map[v1.Hash]v1.Image
 	v1.ImageIndex
+}
+
+func (i *Index) RepoName() string {
+	return i.Host + ":" + i.Port + "/" + i.name
 }
 
 func (i *Index) compute() {
@@ -784,7 +836,23 @@ func (i *Index) Push(ops ...imgutil.IndexPushOption) error {
 		return errors.New("index should need to be saved")
 	}
 
-	return nil
+	ref, err := name.ParseReference(i.RepoName(), name.WeakValidation, name.Insecure)
+	if err != nil {
+		return err
+	}
+
+	mfest, err := i.IndexManifest()
+	if err != nil {
+		return err
+	}
+	if mfest == nil {
+		return imgutil.ErrManifestUndefined
+	}
+
+	taggableIndex := imgutil.NewTaggableIndex(mfest)
+	refs := map[name.Reference]remote.Taggable{ref: taggableIndex}
+
+	return remote.MultiWrite(refs, remote.WithAuthFromKeychain(authn.DefaultKeychain))
 }
 
 func (i *Index) Inspect() (mfestStr string, err error) {
@@ -837,6 +905,13 @@ func (i *Index) Delete() error {
 	i.isDeleted = true
 	i.shouldSave = false
 	return nil
+}
+
+func (i *Index) IndexManifest() (*v1.IndexManifest, error) {
+	if err := computeIndex(i); err != nil {
+		return nil, err
+	}
+	return i.ImageIndex.IndexManifest()
 }
 
 type randomIndex struct {
@@ -1070,7 +1145,9 @@ type Platform struct {
 
 var AllPlatforms = map[string]Platform{
 	"linux/amd64":     {OS: "linux", Arch: "amd64"},
+	"windows/amd64":   {OS: "windows", Arch: "amd64"},
 	"linux/arm64":     {OS: "linux", Arch: "arm64"},
+	"windows/386":     {OS: "windows", Arch: "386"},
 	"linux/386":       {OS: "linux", Arch: "386"},
 	"linux/mips64":    {OS: "linux", Arch: "mips64"},
 	"linux/mipsle":    {OS: "linux", Arch: "mipsle"},
@@ -1078,8 +1155,6 @@ var AllPlatforms = map[string]Platform{
 	"linux/s390x":     {OS: "linux", Arch: "s390x"},
 	"darwin/amd64":    {OS: "darwin", Arch: "amd64"},
 	"darwin/arm64":    {OS: "darwin", Arch: "arm64"},
-	"windows/amd64":   {OS: "windows", Arch: "amd64"},
-	"windows/386":     {OS: "windows", Arch: "386"},
 	"freebsd/amd64":   {OS: "freebsd", Arch: "amd64"},
 	"freebsd/386":     {OS: "freebsd", Arch: "386"},
 	"netbsd/amd64":    {OS: "netbsd", Arch: "amd64"},

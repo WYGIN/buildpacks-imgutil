@@ -1,21 +1,54 @@
 package remote_test
 
 import (
+	"io"
+	"log"
 	"os"
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/registry"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/imgutil/index"
 	"github.com/buildpacks/imgutil/remote"
 	h "github.com/buildpacks/imgutil/testhelpers"
 )
 
 func TestRemoteNew(t *testing.T) {
+	dockerConfigDir, err := os.MkdirTemp("", "test.docker.config.dir")
+	h.AssertNil(t, err)
+	defer os.RemoveAll(dockerConfigDir)
+
+	sharedRegistryHandler := registry.New(registry.Logger(log.New(io.Discard, "", log.Lshortfile)))
+	dockerRegistry = h.NewDockerRegistry(h.WithAuth(dockerConfigDir), h.WithSharedHandler(sharedRegistryHandler))
+	dockerRegistry.Start(t)
+	defer dockerRegistry.Stop(t)
+
+	readonlyDockerRegistry = h.NewDockerRegistry(h.WithSharedHandler(sharedRegistryHandler))
+	readonlyDockerRegistry.Start(t)
+	defer readonlyDockerRegistry.Stop(t)
+
+	customDockerConfigDir, err := os.MkdirTemp("", "test.docker.config.custom.dir")
+	h.AssertNil(t, err)
+	defer os.RemoveAll(customDockerConfigDir)
+	customRegistry = h.NewDockerRegistry(h.WithAuth(customDockerConfigDir), h.WithSharedHandler(sharedRegistryHandler),
+		h.WithImagePrivileges())
+
+	customRegistry.SetReadWrite(readWriteImage)
+	customRegistry.SetReadOnly(readOnlyImage)
+	customRegistry.SetWriteOnly(writeOnlyImage)
+	customRegistry.SetInaccessible(inaccessibleImage)
+	customRegistry.Start(t)
+
+	os.Setenv("DOCKER_CONFIG", dockerRegistry.DockerDirectory)
+	defer os.Unsetenv("DOCKER_CONFIG")
+
 	spec.Run(t, "RemoteNew", testRemoteNew, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -23,9 +56,11 @@ func testRemoteNew(t *testing.T, when spec.G, it spec.S) {
 	var (
 		xdgPath string
 		err     error
+		// repoName string
 	)
 
 	it.Before(func() {
+		// repoName = newTestImageName()
 		// creates the directory to save all the OCI images on disk
 		xdgPath, err = os.MkdirTemp("", "image-indexes")
 		h.AssertNil(t, err)
@@ -37,13 +72,21 @@ func testRemoteNew(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#NewIndex", func() {
+		it.Before(func() {
+			// baseIndex, err := remote.NewIndex(repoName, index.WithInsecure(true), index.WithKeychain(authn.DefaultKeychain), index.WithFormat(types.DockerManifestList), index.WithXDGRuntimePath(xdgPath))
+			baseIndex, err := fakes.NewIndex(types.OCIImageIndex, 1024, 4, 4, v1.Descriptor{}, fakes.WithName(customRegistry.Host, customRegistry.Port, customRegistry.Name))
+			h.AssertNil(t, err)
+
+			h.AssertNil(t, baseIndex.Save())
+			h.AssertNil(t, baseIndex.Push())
+		})
 		it.After(func() {
 			err := os.RemoveAll(xdgPath)
 			h.AssertNil(t, err)
 		})
 		it("should have expected indexOptions", func() {
 			idx, err := remote.NewIndex(
-				"busybox:1.36-musl",
+				newTestImageName(),
 				index.WithInsecure(true),
 				index.WithKeychain(authn.DefaultKeychain),
 				index.WithXDGRuntimePath(xdgPath),

@@ -30,9 +30,10 @@ func WithFormat(format types.MediaType) IndexAddOption {
 type Option func(opts *options)
 
 type options struct {
-	source    rand.Source
-	withIndex bool
-	withHash  v1.Hash
+	source           rand.Source
+	withIndex        bool
+	withHash         v1.Hash
+	name, host, port string
 
 	// TODO opens the door to add this in the future
 	// algorithm digest.Algorithm
@@ -80,5 +81,20 @@ func WithIndex(withIndex bool) Option {
 func WithHash(hash v1.Hash) Option {
 	return func(opts *options) {
 		opts.withHash = hash
+	}
+}
+
+func WithName(host, port, name string) Option {
+	return func(opts *options) {
+		opts.name = name
+		opts.host = host
+		opts.port = port
+	}
+}
+
+func WithServerOn(host, port string) Option {
+	return func(opts *options) {
+		opts.host = host
+		opts.port = port
 	}
 }

@@ -289,6 +289,7 @@ func prepareNewWindowsImageIfNeeded(image *CNBImageCore) error {
 	return nil
 }
 
+// Returns a new Instance of ImageIndex.
 func NewManifestHandler(ii v1.ImageIndex, ops IndexOptions) *ManifestHandler {
 	return &ManifestHandler{
 		ImageIndex:       ii,
@@ -299,21 +300,27 @@ func NewManifestHandler(ii v1.ImageIndex, ops IndexOptions) *ManifestHandler {
 	}
 }
 
+// Returns a new Annotate Instance.
 func NewAnnotate() Annotate {
 	return Annotate{
 		Instance: make(map[v1.Hash]v1.Descriptor),
 	}
 }
 
+// Returns an Empty Docker ImageIndex.
 func NewEmptyDockerIndex() v1.ImageIndex {
 	idx := empty.Index
 	return mutate.IndexMediaType(idx, types.DockerManifestList)
 }
 
+// Returns a New Instance of StringSet.
 func NewStringSet() *StringSet {
 	return &StringSet{items: make(map[string]bool)}
 }
 
+// Returns a new Instance of TaggableIndex.
+// 
+// TaggableIndex provides a set of primitive methods that are required by GGCR
 func NewTaggableIndex(mfest *v1.IndexManifest) *TaggableIndex {
 	return &TaggableIndex{
 		IndexManifest: mfest,

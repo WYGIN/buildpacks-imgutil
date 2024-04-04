@@ -62,6 +62,7 @@ func MutateManifest(i v1.Image, withFunc func(c *v1.Manifest) (mutateSubject, mu
 	return i, err
 }
 
+// Mutates Image Manifest with the given options.
 func MutateManifestFn(mfest *v1.Manifest, os, arch, variant, osVersion string, features, osFeatures, urls []string, annotations map[string]string) (mutateSubject, mutateAnnotations bool) {
 	config := mfest.Config
 	if len(annotations) != 0 && !(MapContains(mfest.Annotations, annotations) || MapContains(config.Annotations, annotations)) {
@@ -174,10 +175,12 @@ func (t *TaggableIndex) Size() (int64, error) {
 	return partial.Size(t)
 }
 
+// Stores string slice without duplicates.
 type StringSet struct {
 	items map[string]bool
 }
 
+// Adds a string to StringSet
 func (s *StringSet) Add(str string) {
 	if s == nil {
 		s = &StringSet{items: make(map[string]bool)}
@@ -186,6 +189,7 @@ func (s *StringSet) Add(str string) {
 	s.items[str] = true
 }
 
+// Removes the string from StringSet
 func (s *StringSet) Remove(str string) {
 	if s == nil {
 		s = &StringSet{items: make(map[string]bool)}
@@ -194,6 +198,7 @@ func (s *StringSet) Remove(str string) {
 	s.items[str] = false
 }
 
+// Returns a StringSlice without duplicate strings
 func (s *StringSet) StringSlice() (slice []string) {
 	if s == nil {
 		s = &StringSet{items: make(map[string]bool)}
@@ -569,6 +574,7 @@ func appendAnnotatedManifests(desc v1.Descriptor, imgDesc v1.Descriptor, path la
 	}
 }
 
+// Returns v1.Hash from the given Reference, even if the reference is name.Tag
 func parseReferenceToHash(ref name.Reference, options IndexOptions) (hash v1.Hash, err error) {
 	switch v := ref.(type) {
 	case name.Tag:
@@ -598,6 +604,8 @@ func parseReferenceToHash(ref name.Reference, options IndexOptions) (hash v1.Has
 	return hash, nil
 }
 
+// returns IndexManifest pointer.
+// Returns an error if IndexManifest doesn't exists, or is nil.
 func getIndexManifest(ii v1.ImageIndex) (mfest *v1.IndexManifest, err error) {
 	mfest, err = ii.IndexManifest()
 	if mfest == nil {
@@ -618,6 +626,7 @@ func indexMediaType(format types.MediaType) string {
 	}
 }
 
+// Returns true if target is a subset of src
 func MapContains(src, target map[string]string) bool {
 	for targetKey, targetValue := range target {
 		if value := src[targetKey]; targetValue == value {
@@ -628,6 +637,7 @@ func MapContains(src, target map[string]string) bool {
 	return true
 }
 
+// Returns true if target is subset of src.
 func SliceContains(src, target []string) bool {
 	for _, value := range target {
 		if ok := slices.Contains[[]string, string](src, value); !ok {

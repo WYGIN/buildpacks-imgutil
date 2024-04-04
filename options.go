@@ -52,18 +52,23 @@ type IndexOptions struct {
 	InsecureRegistry  bool
 }
 
+// Returns Keychain.
 func (o *IndexOptions) Keychain() authn.Keychain {
 	return o.KeyChain
 }
 
+// Returns the current XDGRuntimePath.
 func (o *IndexOptions) XDGRuntimePath() string {
 	return o.XdgPath
 }
 
+// Returns the formted name of repo.
 func (o *IndexOptions) RepoName() string {
+
 	return o.Reponame
 }
 
+// Returns true if Insecure.
 func (o *IndexOptions) Insecure() bool {
 	return o.InsecureRegistry
 }

@@ -15,8 +15,7 @@ func NewIndex(repoName string, ops ...Option) (idx imgutil.ImageIndex, err error
 	var idxOps = &Options{}
 	ops = append(ops, WithRepoName(repoName))
 	for _, op := range ops {
-		err = op(idxOps)
-		if err != nil {
+		if err = op(idxOps); err != nil {
 			return
 		}
 	}
@@ -24,11 +23,11 @@ func NewIndex(repoName string, ops ...Option) (idx imgutil.ImageIndex, err error
 	idxOptions := imgutil.IndexOptions{
 		KeyChain:         idxOps.keychain,
 		XdgPath:          idxOps.xdgPath,
-		Reponame:         idxOps.repoName,
+		Reponame:         repoName,
 		InsecureRegistry: idxOps.insecure,
 	}
 
-	layoutPath := filepath.Join(idxOps.xdgPath, idxOps.repoName)
+	layoutPath := filepath.Join(idxOps.XDGRuntimePath(), idxOps.RepoName())
 	switch idxOps.format {
 	case types.DockerManifestList:
 		idx = imgutil.NewManifestHandler(imgutil.NewEmptyDockerIndex(), idxOptions)

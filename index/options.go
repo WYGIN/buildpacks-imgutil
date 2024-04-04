@@ -4,6 +4,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/types"
+
+	"github.com/buildpacks/imgutil"
 )
 
 type Option func(*Options) error
@@ -24,7 +26,7 @@ func (o *Options) XDGRuntimePath() string {
 }
 
 func (o *Options) RepoName() string {
-	return o.repoName
+	return imgutil.MakeFilesafeName(o.repoName)
 }
 
 func (o *Options) Insecure() bool {
@@ -55,13 +57,11 @@ func WithXDGRuntimePath(xdgPath string) Option {
 func WithRepoName(repoName string) Option {
 	return func(o *Options) error {
 		if o.insecure {
-			_, err := name.ParseReference(repoName, name.Insecure, name.WeakValidation)
-			if err != nil {
+			if _, err := name.ParseReference(repoName, name.Insecure, name.WeakValidation); err != nil {
 				return err
 			}
 		} else {
-			_, err := name.ParseReference(repoName, name.WeakValidation)
-			if err != nil {
+			if _, err := name.ParseReference(repoName, name.WeakValidation); err != nil {
 				return err
 			}
 		}

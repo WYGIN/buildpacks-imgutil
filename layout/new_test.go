@@ -61,9 +61,6 @@ func testRemoteNew(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, ok, true)
 			h.AssertEq(t, imgIdx.Options.Reponame, repoName)
 			h.AssertEq(t, imgIdx.Options.XdgPath, xdgPath)
-
-			err = idx.Delete()
-			h.AssertNil(t, err)
 		})
 		it("should return an error when invalid repoName is passed", func() {
 			idx, err = layout.NewIndex(
@@ -80,9 +77,6 @@ func testRemoteNew(t *testing.T, when spec.G, it spec.S) {
 			)
 			h.AssertNil(t, err)
 			h.AssertNotEq(t, idx, nil)
-
-			err = idx.Delete()
-			h.AssertNil(t, err)
 		})
 		it("should able to call #ImageIndex", func() {
 			idx, err = layout.NewIndex(
@@ -99,9 +93,6 @@ func testRemoteNew(t *testing.T, when spec.G, it spec.S) {
 
 			_, err = imgIdx.ImageIndex.ImageIndex(hash)
 			h.AssertNotEq(t, err.Error(), "empty index")
-
-			err = idx.Delete()
-			h.AssertNil(t, err)
 		})
 		it("should able to call #Image", func() {
 			idx, err = layout.NewIndex(
@@ -118,9 +109,6 @@ func testRemoteNew(t *testing.T, when spec.G, it spec.S) {
 
 			_, err = imgIdx.ImageIndex.Image(hash)
 			h.AssertNotEq(t, err.Error(), "empty index")
-
-			err = idx.Delete()
-			h.AssertNil(t, err)
 		})
 	})
 }

@@ -39,7 +39,7 @@ func testRemoteOptions(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, op(ops))
 			}
 
-			h.AssertEq(t, ops.RepoName(), "repo/name")
+			h.AssertEq(t, ops.RepoName(), "repo_name")
 		})
 		it("should return an error when index with the given repoName doesn't exists", func() {
 			opts = append(opts, index.WithRepoName("repoName"))

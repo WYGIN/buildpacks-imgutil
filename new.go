@@ -319,7 +319,7 @@ func NewStringSet() *StringSet {
 }
 
 // Returns a new Instance of TaggableIndex.
-// 
+//
 // TaggableIndex provides a set of primitive methods that are required by GGCR
 func NewTaggableIndex(mfest *v1.IndexManifest) *TaggableIndex {
 	return &TaggableIndex{

@@ -31,7 +31,7 @@ func testIndexOptions(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, indexOptions.XDGRuntimePath(), "/xdgPath")
 		})
 		it("#RepoName should return expected RepoName", func() {
-			h.AssertEq(t, indexOptions.RepoName(), "some/repoName")
+			h.AssertEq(t, indexOptions.RepoName(), "some_repoName")
 		})
 		it("#Insecure should return expected boolean", func() {
 			h.AssertEq(t, indexOptions.Insecure(), true)

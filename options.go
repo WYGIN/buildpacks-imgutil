@@ -64,8 +64,7 @@ func (o *IndexOptions) XDGRuntimePath() string {
 
 // Returns the formted name of repo.
 func (o *IndexOptions) RepoName() string {
-
-	return o.Reponame
+	return MakeFilesafeName(o.Reponame)
 }
 
 // Returns true if Insecure.

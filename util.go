@@ -3,6 +3,7 @@ package imgutil
 import (
 	"encoding/json"
 	"slices"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -477,6 +478,12 @@ func (a *Annotate) SetFormat(hash v1.Hash, format types.MediaType) {
 
 	desc.MediaType = format
 	a.Instance[hash] = desc
+}
+
+func MakeFilesafeName(ref string) string {
+	digestSafe := strings.ReplaceAll(ref, "@", "-")
+	tagSafe := strings.ReplaceAll(digestSafe, ":", "-")
+	return strings.ReplaceAll(tagSafe, "/", "_")
 }
 
 func updatePlatform(config *v1.ConfigFile, platform *v1.Platform) error {

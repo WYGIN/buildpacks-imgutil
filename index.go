@@ -1421,7 +1421,7 @@ func (h *ManifestHandler) Push(ops ...IndexPushOption) error {
 	}
 
 	ref, err := name.ParseReference(
-		h.Options.RepoName(),
+		h.Options.Reponame,
 		name.WeakValidation,
 		name.Insecure,
 	)
@@ -1577,7 +1577,7 @@ func (h *ManifestHandler) getImageURLs(hash v1.Hash) (urls []string, format type
 	return urls, mfest.MediaType, ErrNoImageOrIndexFoundWithGivenDigest(hash.String())
 }
 
-// Returns an IndexManifest with given digest if exists, else returns ErrNoImageOrIndexFoundWithGivenDigest error. 
+// Returns an IndexManifest with given digest if exists, else returns ErrNoImageOrIndexFoundWithGivenDigest error.
 func (h *ManifestHandler) getIndexManifest(digest name.Digest) (mfest *v1.IndexManifest, err error) {
 	hash, err := v1.NewHash(digest.Identifier())
 	if err != nil {

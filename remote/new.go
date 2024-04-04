@@ -28,13 +28,12 @@ func NewIndex(repoName string, ops ...index.Option) (idx imgutil.ImageIndex, err
 	ops = append(ops, index.WithRepoName(repoName))
 
 	for _, op := range ops {
-		err = op(idxOps)
-		if err != nil {
+		if err = op(idxOps); err != nil {
 			return
 		}
 	}
 
-	ref, err := name.ParseReference(idxOps.RepoName(), name.WeakValidation, name.Insecure)
+	ref, err := name.ParseReference(repoName, name.WeakValidation, name.Insecure)
 	if err != nil {
 		return
 	}
@@ -56,7 +55,7 @@ func NewIndex(repoName string, ops ...index.Option) (idx imgutil.ImageIndex, err
 	idxOptions := imgutil.IndexOptions{
 		KeyChain:         idxOps.Keychain(),
 		XdgPath:          idxOps.XDGRuntimePath(),
-		Reponame:         idxOps.RepoName(),
+		Reponame:         repoName,
 		InsecureRegistry: idxOps.Insecure(),
 	}
 
